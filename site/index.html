@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Afsprakenplanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+        }
+        .calendar {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 auto;
+        }
+        th {
+            background-color: #f2f2f2;
+            padding: 10px;
+        }
+        td {
+            cursor: pointer;
+            color: black;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            text-align: center;
+            vertical-align: middle;
+            background-color: transparent;
+        }
+        td.disabled {
+            color: #ccc;
+            cursor: not-allowed;
+        }
+        td.available:hover {
+            background-color: #4dabf7;
+            color: rgb(255, 255, 255);
+        }
+        td.selected {
+            background-color: rgb(0, 60, 255);
+            color: rgb(255, 255, 255);
+            border: 2px solid #4dabf7;
+        }
+        .times {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .times ul {
+            list-style-type: none;
+            padding: 0;
+            display: inline-block;
+        }
+        .times ul li {
+            background-color: #1890ff;
+            color: white;
+            padding: 10px;
+            margin: 5px;
+            text-align: center;
+            cursor: pointer;
+            width: 100px;
+            border-radius: 5px;
+        }
+        .times ul li:hover {
+            background-color: #40a9ff;
+        }
+        .times ul li.selected {
+            background-color: #91d5ff;
+            color: black;
+        }
+        .month-selector {
+            margin-bottom: 20px;
+        }
+        .month-selector select {
+            padding: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calendar">
+    <div class="month-selector">
+        <label for="month">Kies een maand:</label>
+        <select id="month" onchange="generateCalendar()">
+            <!-- Dynamische maandopties worden hier geladen -->
+        </select>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Ma</th>
+                <th>Di</th>
+                <th>Wo</th>
+                <th>Do</th>
+                <th>Vr</th>
+                <th>Za</th>
+                <th>Zo</th>
+            </tr>
+        </thead>
+        <tbody id="calendar-body">
+            <!-- Dynamische kalenderinhoud hier -->
+        </tbody>
+    </table>
+
+    <div class="times" id="times">
+        <h2>Beschikbare tijden</h2>
+        <ul id="time-slots">
+            <!-- Tijdvakken verschijnen hier -->
+        </ul>
+    </div>
+</div>
+
+<script>
+    const calendarBody = document.getElementById('calendar-body');
+    const timeSlots = document.getElementById('time-slots');
+    const monthSelector = document.getElementById('month');
+    let selectedDateCell = null;
+    let selectedTimeSlot = null;
+
+    const availableTimes = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00'];
+    const apiEndpoint = "https://e5n0hg0ad3.execute-api.eu-central-1.amazonaws.com/prod/reservations";  // Replace with actual API endpoint
+
+    const monthNames = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+
+    function getDaysInMonth(year, month) {
+        return new Date(year, month + 1, 0).getDate();
+    }
+
+    function generateMonthOptions() {
+        const now = new Date();
+        for (let i = 0; i < 12; i++) {
+            const futureDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+            const monthValue = futureDate.getMonth() + 1;
+            const option = document.createElement('option');
+            option.value = `${futureDate.getFullYear()}-${monthValue < 10 ? '0' + monthValue : monthValue}`;
+            option.text = `${monthNames[futureDate.getMonth()]} ${futureDate.getFullYear()}`;
+            monthSelector.appendChild(option);
+        }
+    }
+
+    function isPastDate(year, month, day) {
+        const today = new Date();
+        const dateToCheck = new Date(year, month, day);
+        return dateToCheck < today;
+    }
+
+    function generateCalendar() {
+        const selectedMonth = monthSelector.value.split("-");
+        const year = parseInt(selectedMonth[0]);
+        const month = parseInt(selectedMonth[1]) - 1;
+
+        const daysInMonth = getDaysInMonth(year, month);
+        const firstDayOffset = new Date(year, month, 1).getDay();
+
+        let day = 1;
+        let rows = '';
+
+        for (let i = 0; i < 6; i++) {
+            let row = '<tr>';
+            for (let j = 0; j < 7; j++) {
+                if (i === 0 && j < firstDayOffset) {
+                    row += '<td></td>';
+                } else if (day <= daysInMonth) {
+                    if (isPastDate(year, month, day)) {
+                        row += `<td class="disabled">${day}</td>`;
+                    } else {
+                        row += `<td class="available" onclick="showTimes(${day}, this)">${day}</td>`;
+                    }
+                    day++;
+                } else {
+                    row += '<td></td>';
+                }
+            }
+            row += '</tr>';
+            rows += row;
+
+            if (day > daysInMonth) break;
+        }
+
+        calendarBody.innerHTML = rows;
+    }
+
+    function showTimes(day, cell) {
+        let slotsHtml = '';
+        availableTimes.forEach(time => {
+            slotsHtml += `<li onclick="selectTimeSlot(this, ${day}, '${time}')">${time}</li>`;
+        });
+        timeSlots.innerHTML = slotsHtml;
+
+        if (selectedDateCell) {
+            selectedDateCell.classList.remove('selected');
+        }
+        cell.classList.add('selected');
+        selectedDateCell = cell;
+    }
+
+    async function selectTimeSlot(timeSlotElement, day, time) {
+        if (selectedTimeSlot) {
+            selectedTimeSlot.classList.remove('selected');
+        }
+        timeSlotElement.classList.add('selected');
+        selectedTimeSlot = timeSlotElement;
+
+        const userName = prompt("Voer je naam in:", "John Doe");
+        if (!userName) {
+            alert("Naam is vereist om een afspraak te maken.");
+            return;
+        }
+
+        const selectedDate = `${monthSelector.value}-${day < 10 ? '0' + day : day}`;
+
+        try {
+            // Submit the reservation to the API Gateway endpoint
+            const response = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: userName,
+                    date: selectedDate,
+                    time: time
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+    alert(`Afspraak bevestigd voor ${userName} op ${selectedDate} om ${time}`);
+} else {
+    // Attempt to parse and display error message from server
+    try {
+        const errorData = await response.json();
+        alert(`Fout bij het maken van een afspraak: ${errorData.message || 'Onbekende fout'}`);
+        console.error('Server error:', errorData);
+    } catch (parseError) {
+        // Handle cases where response is not JSON
+        console.error('Response parse error:', parseError);
+        alert('Er is een fout opgetreden bij het verwerken van de serverfout.');
+    }
+}
+} catch (networkError) {
+    console.error('Network error:', networkError);
+    alert(`Er is een netwerkfout opgetreden bij het maken van een afspraak: ${networkError.message || 'Onbekende netwerkfout'}`);
+}
+
+    }
+
+    window.onload = function() {
+        generateMonthOptions();
+        generateCalendar();
+    };
+</script>
+
+</body>
+</html>
