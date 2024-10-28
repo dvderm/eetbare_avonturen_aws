@@ -2,6 +2,8 @@ import os
 import json
 import uuid
 import boto3
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 dynamodb = boto3.resource('dynamodb')
 table_name = os.environ['TABLE_NAME']
@@ -12,8 +14,10 @@ def lambda_handler(event, context):
     try:
         data = json.loads(event['body'])
         reservation_id = str(uuid.uuid4())  # Generate a unique ID for the reservation
+        insertdate = str(datetime.now(ZoneInfo('Europe/Amsterdam')))
         item = {
             'id': reservation_id,
+            'insertdate': insertdate,
             'name': data.get('name'),
             'email': data.get('email'),
             'date': data.get('date'),
