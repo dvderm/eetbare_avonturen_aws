@@ -55,10 +55,10 @@ class EetbareAvonturenAwsStack(Stack):
         api = apigateway.RestApi(self, "ReservationApi",
             default_cors_preflight_options=apigateway.CorsOptions(
                 allow_origins=apigateway.Cors.ALL_ORIGINS,      # Instead of ALL_ORIGINS it should have only the origin of my website
-                allow_methods=apigateway.Cors.ALL_METHODS       # Instead of ALL_METHODS it should probably only have POST
+                allow_methods=apigateway.Cors.ALL_METHODS       # Instead of ALL_METHODS it should probably only have POST, according to perplexity this would be: allow_methods=["POST"]
             ),
             rest_api_name="Reservation Service",
-            description="This service handles reservation submissions."
+            description="This service handles reservation submissions.",
         )
 
         # Create an endpoint that triggers the Lambda function

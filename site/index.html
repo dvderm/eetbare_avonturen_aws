@@ -214,9 +214,9 @@
         timeSlotElement.classList.add('selected');
         selectedTimeSlot = timeSlotElement;
 
-        const userName = prompt("Voer je naam in:", "John Doe");
-        if (!userName) {
-            alert("Naam is vereist om een afspraak te maken.");
+        const userEmail = prompt("Voer je emailadres in:", "");
+        if (!userEmail) {
+            alert("Emailadres is vereist om een afspraak te maken.");
             return;
         }
 
@@ -230,7 +230,7 @@
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    name: userName,
+                    email: userEmail,
                     date: selectedDate,
                     time: time
                 })
@@ -239,23 +239,23 @@
             const result = await response.json();
 
             if (response.ok) {
-    alert(`Afspraak bevestigd voor ${userName} op ${selectedDate} om ${time}`);
-} else {
-    // Attempt to parse and display error message from server
-    try {
-        const errorData = await response.json();
-        alert(`Fout bij het maken van een afspraak: ${errorData.message || 'Onbekende fout'}`);
-        console.error('Server error:', errorData);
-    } catch (parseError) {
-        // Handle cases where response is not JSON
-        console.error('Response parse error:', parseError);
-        alert('Er is een fout opgetreden bij het verwerken van de serverfout.');
-    }
-}
-} catch (networkError) {
-    console.error('Network error:', networkError);
-    alert(`Er is een netwerkfout opgetreden bij het maken van een afspraak: ${networkError.message || 'Onbekende netwerkfout'}`);
-}
+                alert(`Afspraak bevestigd voor ${userEmail} op ${selectedDate} om ${time}`);
+            } else {
+                // Attempt to parse and display error message from server
+                try {
+                    const errorData = await response.json();
+                    alert(`Fout bij het maken van een afspraak: ${errorData.message || 'Onbekende fout'}. Stuur s.v.p. een email naar info@eetbareavonturen.nl`);
+                    console.error('Server error:', errorData);
+                } catch (parseError) {
+                    // Handle cases where response is not JSON
+                    console.error('Response parse error:', parseError);
+                    alert('Er is een fout opgetreden bij het verwerken van de serverfout. Stuur s.v.p. een email naar info@eetbareavonturen.nl');
+                }
+            }
+            } catch (networkError) {
+                console.error('Network error:', networkError);
+                alert(`Er is een netwerkfout opgetreden bij het maken van een afspraak: ${networkError.message || 'Onbekende netwerkfout'}. Stuur s.v.p. een email naar info@eetbareavonturen.nl`);
+                }
 
     }
 
