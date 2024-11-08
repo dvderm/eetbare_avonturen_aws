@@ -1,5 +1,8 @@
 from aws_cdk import (
     Stack,
+    aws_ses as ses,
+    aws_ses_actions as ses_actions,
+    aws_iam as iam,
     aws_s3 as s3,
     aws_s3_deployment as s3deploy,
     aws_lambda as lambda_,
@@ -44,12 +47,19 @@ class EetbareAvonturenAwsStack(Stack):
         # Create a Lambda function to handle reservation submissions
         reservation_lambda = lambda_.Function(self, "ReservationFunction",
             runtime=lambda_.Runtime.PYTHON_3_9,
-            handler="reservation_handler.lambda_handler",  # Entry point in the code file
-            code=lambda_.Code.from_asset("lambda"),  # Directory where the code is located
-            environment={
-                'TABLE_NAME': appointment_table.table_name
+            handler="reservation_handler.lambda_handler",   # Entry point in the code file
+            code=lambda_.Code.from_asset("lambda"),         # Directory where the code is located
+            environment={                                   # Setting environment variables that are used in script reservation_handler.py
+                'TABLE_NAME': appointment_table.table_name,
+                'SENDER_EMAIL': "info@eetbareavonturen.nl"
             }
         )
+
+        # Grant the Lambda function permissions to send emails via SES
+        reservation_lambda.add_to_role_policy(iam.PolicyStatement(
+            actions=["ses:SendEmail", "ses:SendRawEmail"],
+            resources=["*"]
+        ))
 
         # Create an API Gateway REST API to expose the Lambda function as an endpoint
         api = apigateway.RestApi(self, "ReservationApi",
@@ -68,6 +78,11 @@ class EetbareAvonturenAwsStack(Stack):
 
         # Grant the Lambda function permissions to write to the DynamoDB table
         appointment_table.grant_write_data(reservation_lambda)
+
+        # Create an SES email identity
+        email_identity = ses.EmailIdentity(self, "SenderEmailIdentity",
+            identity=ses.Identity.email("info@eetbareavonturen.nl")  
+        )
 
         # Output the S3 website URL
         CfnOutput(self, "WebsiteURL",
