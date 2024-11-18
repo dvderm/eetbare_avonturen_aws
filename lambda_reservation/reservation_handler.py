@@ -18,7 +18,7 @@ sender_email = os.environ['SENDER_EMAIL']
 def lambda_handler(event, context):
 
     # Log incoming JSON data that goes from frontend to backend
-    print(json.dumps(event))
+    print(f'Logging: {json.dumps(event)}')
 
     # Load data from incoming JSON into DynamoDB table
     try:
@@ -34,7 +34,7 @@ def lambda_handler(event, context):
         }
         
         # Log incoming insert into DynamoDB table
-        print(f'Inserting following data into DynamoDB: {item}')
+        print(f'Logging: inserting following data into DynamoDB: {item}')
 
         # Insert the item into DynamoDB
         table.put_item(Item=item)
@@ -52,7 +52,7 @@ def lambda_handler(event, context):
             'body': json.dumps({'message': 'Reservation created successfully!', 'reservation_id': reservation_id})
         }
 
-        print(f'Succes response from backend to frontend: {json.dumps(success_response)}')
+        print(f'Logging: succes response from backend to frontend: {json.dumps(success_response)}')
 
         return success_response
 
@@ -72,7 +72,7 @@ def lambda_handler(event, context):
 def send_confirmation_email(ses, reservation):
 
     # Adding logging
-    print(reservation['email'])
+    print(f"""Logging: mailadres klant: {reservation['email']}""")
 
     subject = "Reserveringsbevestiging"
     body = f"""
@@ -91,13 +91,17 @@ def send_confirmation_email(ses, reservation):
     Eetbare Avonturen
     """
 
-    ses.send_email(
-        Source=sender_email,
-        Destination={
-            'ToAddresses': [reservation['email']]
-        },
-        Message={
-            'Subject': {'Data': subject},
-            'Body': {'Text': {'Data': body}}
-        }
-    )
+    try:
+        ses.send_email(
+            Source=sender_email,
+            Destination={
+                'ToAddresses': [reservation['email']]
+            },
+            Message={
+                'Subject': {'Data': subject},
+                'Body': {'Text': {'Data': body}}
+            }
+        )
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        print(f"Full error details: {json.dumps(e.__dict__, default=str)}")

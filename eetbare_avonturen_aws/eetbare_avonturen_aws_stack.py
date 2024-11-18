@@ -22,17 +22,17 @@ class EetbareAvonturenAwsStack(Stack):
         website_bucket = s3.Bucket(self, "WebsiteBucket",
             website_index_document="index.html",
             # website_error_document="error.html",
-            public_read_access=True,  # Make the bucket publicly accessible
+            public_read_access=True,                                # Make the bucket publicly accessible
             block_public_access=s3.BlockPublicAccess.BLOCK_ACLS,
-            removal_policy=RemovalPolicy.DESTROY,  # Delete the bucket on stack removal
-            auto_delete_objects=True,  # Automatically delete bucket objects on removal
+            removal_policy=RemovalPolicy.DESTROY,                   # Delete the bucket on stack removal
+            auto_delete_objects=True,                               # Automatically delete bucket objects on removal
         )
 
          # Deploy website files from the local 'site' directory to the root of the S3 bucket
         s3deploy.BucketDeployment(self, "DeployWebsite",
             sources=[s3deploy.Source.asset("./site")],
             destination_bucket=website_bucket,
-            destination_key_prefix=""  # Ensure files are placed in the root of the bucket
+            destination_key_prefix=""                       # Ensure files are placed in the root of the bucket
         )
 
         # Create the DynamoDB table for the appointments
@@ -47,9 +47,9 @@ class EetbareAvonturenAwsStack(Stack):
         # Create a Lambda function to handle reservation submissions
         reservation_lambda = lambda_.Function(self, "ReservationFunction",
             runtime=lambda_.Runtime.PYTHON_3_9,
-            handler="reservation_handler.lambda_handler",   # Entry point in the code file
-            code=lambda_.Code.from_asset("lambda"),         # Directory where the code is located
-            environment={                                   # Setting environment variables that are used in script reservation_handler.py
+            handler="reservation_handler.lambda_handler",               # Entry point in the code file
+            code=lambda_.Code.from_asset("lambda_reservation"),         # Directory where the code is located
+            environment={                                               # Setting environment variables that are used in script reservation_handler.py
                 'TABLE_NAME': appointment_table.table_name,
                 'SENDER_EMAIL': "info@eetbareavonturen.nl"
             }
@@ -64,8 +64,8 @@ class EetbareAvonturenAwsStack(Stack):
         # Create an API Gateway REST API to expose the Lambda function as an endpoint
         api = apigateway.RestApi(self, "ReservationApi",
             default_cors_preflight_options=apigateway.CorsOptions(
-                allow_origins=apigateway.Cors.ALL_ORIGINS,      # Instead of ALL_ORIGINS it should have only the origin of my website
-                allow_methods=apigateway.Cors.ALL_METHODS       # Instead of ALL_METHODS it should probably only have POST, according to perplexity this would be: allow_methods=["POST"]
+                allow_origins=[website_bucket.bucket_website_url],      # "website_bucket.bucket_website_url" gives a string. Property "allow_origins" only allows strings in array, which is why the brackets are used around the website url. 
+                allow_methods=["POST"]                                  # Only allow POST API calls
             ),
             rest_api_name="Reservation Service",
             description="This service handles reservation submissions.",
@@ -74,7 +74,7 @@ class EetbareAvonturenAwsStack(Stack):
         # Create an endpoint that triggers the Lambda function
         reservations = api.root.add_resource("reservations")
         reservations_lambda_integration = apigateway.LambdaIntegration(reservation_lambda)
-        reservations.add_method("POST", reservations_lambda_integration)  # POST /reservations
+        reservations.add_method("POST", reservations_lambda_integration)
 
         # Grant the Lambda function permissions to write to the DynamoDB table
         appointment_table.grant_write_data(reservation_lambda)
@@ -83,6 +83,12 @@ class EetbareAvonturenAwsStack(Stack):
         email_identity = ses.EmailIdentity(self, "SenderEmailIdentity",
             identity=ses.Identity.email("info@eetbareavonturen.nl")  
         )
+
+        # Create a Lambda function to remind customers one day before reservationdate
+        # reminder_lambda = lambda_.Function(self, "ReminderFunction",
+        #     runtime=lambda_.Runtime.PYTHON_3_9,
+        #     code=
+        # )
 
         # Output the S3 website URL
         CfnOutput(self, "WebsiteURL",
